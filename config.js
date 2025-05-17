@@ -1,5 +1,6 @@
 const config = {
-    localStoragePrefix: "crossing",
-    title: "CrosSing Sorter",
-    description: "Party rank sorter for your custom list of songs."
+    localStoragePrefix: "trios-2",
+    title: "Anime Songs Trios Sorter",
+    description: "Party rank sorter for your custom list of songs.",
+    songsPerPair: 3
 };

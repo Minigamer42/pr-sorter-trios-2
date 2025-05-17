@@ -1,4 +1,5 @@
-let musicData = [];
+/** @typedef {{id: number|string, anime: string, name: string, video: string|null, mp3: string|null}} song */
+let musicData = /** @type {song|song[]} */ [];
 let sortedIndexList = [];
 let recordDataList = [];
 let parentIndexList = [];
@@ -64,7 +65,36 @@ function showDuel(id1, id2) {
     const duelContainer = document.getElementById('duel');
     duelContainer.innerHTML = "";
 
-    function createMusicCard(music, isLeft) {
+    function addPickButton(card, isLeft) {
+        const button = document.createElement('button');
+        button.textContent = "PICK";
+        button.addEventListener('click', () => {
+            if (isLeft) {
+                pick('left');
+            } else {
+                pick('right');
+            }
+        });
+        card.appendChild(button);
+    }
+
+    /**
+     * @param music {song|song[]}
+     * @param isLeft {boolean}
+     * @param isSmall {boolean}
+     * @returns {HTMLDivElement}
+     */
+    function createMusicCard(music, isLeft, isSmall = false) {
+        if (Array.isArray(music)) {
+            const wrapper = document.createElement('div');
+            wrapper.classList.add('music-card-wrapper');
+            wrapper.classList.add(`grid-${config.songsPerPair}`);
+            for (const item of music) {
+                wrapper.appendChild(createMusicCard(item, isLeft, true));
+            }
+            addPickButton(wrapper, isLeft);
+            return wrapper;
+        }
         const card = document.createElement('div');
         card.className = 'music-card';
 
@@ -101,17 +131,9 @@ function showDuel(id1, id2) {
       <div class="song">${music.name}</div>
     `;
 
-        const button = document.createElement('button');
-        button.textContent = "PICK";
-        button.addEventListener('click', () => {
-            if (isLeft) {
-                pick('left');
-            } else {
-                pick('right');
-            }
-        });
-
-        card.appendChild(button);
+        if (!isSmall) {
+            addPickButton(card, isLeft);
+        }
         return card;
     }
 
@@ -211,8 +233,7 @@ function start() {
 
     let container = document.querySelector(".button-container");
     container.appendChild(button1);
-
-    musicDataToSort = musicData.slice(0);
+    const musicDataToSort = musicData.slice(0);
     recordDataList = musicDataToSort.map(() => 0);
     sortedIndexList[0] = musicDataToSort.map((val, idx) => idx);
     parentIndexList[0] = -1;
@@ -277,7 +298,7 @@ function undo() {
 
 function result() {
 
-    const elements = document.querySelectorAll('.music-card');
+    const elements = document.querySelectorAll('.music-card,button');
     elements.forEach(element => {
         element.style.display = 'none';
     });
@@ -300,7 +321,7 @@ function result() {
     const table = document.createElement('table');
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    const headers = ['ID', 'Anime', 'Song', 'Rank'];
+    const headers = ['ID', 'Song', 'Rank'];
 
     headers.forEach(headerText => {
         const th = document.createElement('th');
@@ -313,22 +334,27 @@ function result() {
 
     const tbody = document.createElement('tbody');
 
-    musicData.forEach(music => {
+    musicData.forEach(/** @param songs {song[]} */songs => {
+        if (!Array.isArray(songs)) {
+            // noinspection JSValidateTypes
+            songs = [songs];
+        }
+        const music = songs[0];
         const tr = document.createElement('tr');
 
         const tdId = document.createElement('td');
         tdId.textContent = music.id;
         tr.appendChild(tdId);
 
-        const tdAnimeName = document.createElement('td');
-        tdAnimeName.textContent = music.anime;
-        tdAnimeName.title = music.anime;
-        tr.appendChild(tdAnimeName);
-
-        const tdMusicName = document.createElement('td');
-        tdMusicName.textContent = music.name;
-        tdMusicName.title = music.name;
-        tr.appendChild(tdMusicName);
+        const tdSong = document.createElement('td');
+        tdSong.textContent = songs.reduce((acc, song) => {
+            if (acc) {
+                acc += ' | ';
+            }
+            return acc + `${song.anime} / ${song.name}`;
+        }, '');
+        tdSong.title = tdSong.textContent;
+        tr.appendChild(tdSong);
 
         const tdRank = document.createElement('td');
         tdRank.textContent = sortedIndexList[0].indexOf(music.id - 1) + 1;
@@ -368,11 +394,11 @@ function selectOption(type, element) {
     } else if (text === 'Audio') {
         video = false;
     } else if (text === 'Europe') {
-        region = "eu"
+        region = "eu";
     } else if (text === 'NA West') {
         region = "naw";
     } else if (text === 'NA East') {
-        region = "nae"
+        region = "nae";
     }
 
     showDuel(sortedIndexList[leftIndex][leftInnerIndex], sortedIndexList[rightIndex][rightInnerIndex]);
@@ -382,7 +408,8 @@ function selectOption(type, element) {
 function copyToClipboard() {
     const ranksByID = [];
     musicData.forEach(music => {
-        ranksByID.push(sortedIndexList[0].indexOf(music.id - 1) + 1);
+        const id = music.id ?? music?.[0]?.id ?? 0;
+        ranksByID.push(sortedIndexList[0].indexOf(id - 1) + 1);
     });
     const textToCopy = ranksByID.join("\n");
     navigator.clipboard.writeText(textToCopy).then(() => {
